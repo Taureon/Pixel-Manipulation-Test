@@ -1,0 +1,227 @@
+<html>
+    <head>
+        <title>Pixel Manipulation Technology Test By Taureon</title>
+    </head>
+    <body style="background-color:#000">
+        <canvas id="canvas" style="background-color:#fff;position:fixed;left:0;top:0">
+        <script>
+            let canvas = document.getElementById('canvas'),
+                ctx = canvas.getContext('2d'),
+                ticknum = 0,
+                head = document.createElement('canvas'),
+                headCtx = head.getContext('2d'),
+                outeroffsetX = 0,
+                outeroffsetY = 0,
+                inneroffsetX = 0,
+                inneroffsetY = 0,
+                mouseTransformScale = 0,
+                scaleW = 16,
+                scaleH = 9,
+                fontScale = 30,
+                selected = 0,
+                hurtSize = 50,
+                carveSize = 50;
+
+            head.width = 1000;
+            head.height = 1000;
+            let halfHeadWidth = head.width * 0.5;
+            headCtx.fillStyle = 'black';
+            headCtx.beginPath();
+            headCtx.moveTo(halfHeadWidth, head.height * 0.5);
+            headCtx.arc(halfHeadWidth, head.height * 0.5, Math.min(halfHeadWidth, head.height * 0.5), 0, Math.PI * 2);
+            headCtx.fill();
+            headCtx.fillRect(head.width * 0.3, head.height * 0.5, head.width * 0.4, head.height * 0.5);
+
+            let render = () => {
+
+                //fill the canvas with a blue gradient
+                let gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, '#36d');
+                gradient.addColorStop(1, '#4cf');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                let ratioW = canvas.width / head.width,
+                    ratioH = canvas.height / head.height,
+                    paddingX = 0,
+                    paddingY = 0,
+                    scaleFinal = Math.min(ratioW, ratioH);
+                if (ratioW > ratioH) {
+                    paddingX = (canvas.width - head.width * scaleFinal) / 2;
+                } else {
+                    paddingY = (canvas.height - head.height * scaleFinal) / 2;
+                }
+                inneroffsetX = paddingX;
+                inneroffsetY = paddingY;
+                mouseTransformScale = scaleFinal;
+                ctx.drawImage(head, paddingX, paddingY, head.width * scaleFinal, head.height * scaleFinal);
+
+                ctx.font = 'bold ' + fontScale + 'px consolas';
+                ctx.fillStyle = 'red';
+                ctx.fillText((selected ? ' ' : '>') + 'inner carve radius: ' + carveSize, 10, fontScale);
+                ctx.fillText((selected ? '>' : ' ') + 'outer carve radius: ' + hurtSize, 10, fontScale * 2);
+            };
+
+            let getDistance = (x1, y1, x2, y2) => (x1 - x2) ** 2 + (y1 - y2) ** 2,
+            makeCut = event => {
+                let image = headCtx.getImageData(0, 0, head.width, head.height),
+                    start = performance.now(),
+
+                    //THIS SHIT DOESNT WORK. WHY?
+                    mouseX = (event.clientX - outeroffsetX - inneroffsetX) / mouseTransformScale,
+                    mouseY = (event.clientY - outeroffsetY - inneroffsetY) / mouseTransformScale,
+
+                    totalCarveSize = carveSize + hurtSize/*,
+                    minx = Math.max(0, mouseX - totalCarveSize),
+                    miny = Math.max(0, mouseY - totalCarveSize),
+                    maxx = Math.min(image.width, 1 + mouseX + totalCarveSize),
+                    maxy = Math.min(image.height, 1 + mouseY + totalCarveSize)*/;
+
+                // //this is just worse...
+                // for (let x = minx; x < maxx; x++) {
+                //     for (let y = miny; y < maxy; y++) {
+                //         let j = (y * image.width + x) * 4,
+                //             red =   image.data[j + 0],
+                //             green = image.data[j + 1],
+                //             blue =  image.data[j + 2],
+                //             alpha = image.data[j + 3];
+
+                //         console.log(x, y, j % image.width, Math.floor(j / image.width));
+
+                //         //if this pixel is relevant
+                //         //if it isnt gone, if its not an eye, if its not a bone
+                //         if (alpha && green !== 15 && green !== 255) {
+                //             let distance = Math.sqrt(getDistance(x, y, mouseX, mouseY));
+
+                //             //eyes
+                //             if (getDistance(x, y, 300, 400) < 100 ** 2
+                //              || getDistance(x, y, 700, 400) < 100 ** 2) {
+                //                 if (distance < totalCarveSize) red = green = blue = 15;
+
+                //             //skin
+                //             } else {
+
+                //                 //flesh removal into bones or space
+                //                 if (distance < carveSize) {
+                //                     red = 255;
+                //                     green = 255;
+                //                     blue = 255;
+                //                     alpha = (
+                //                         //spine
+                //                         (halfHeadWidth - x) ** 2 / 3 + (head.height * 0.96 - y) ** 2     < 50 ** 2 ||
+                //                         (halfHeadWidth - x) ** 2 / 6 + (head.height * 0.96 - y) ** 2 * 9 < 50 ** 2 ||
+                //                         (halfHeadWidth - x) ** 2 / 3 + (head.height        - y) ** 2     < 50 ** 2 ||
+                //                         (halfHeadWidth - x) ** 2 / 6 + (head.height        - y) ** 2 * 9 < 50 ** 2 ||
+
+                //                         //skull
+                //                         (halfHeadWidth - x) ** 2     + (head.height * 0.5  - y) ** 2 < 450 ** 2
+                //                     ) ? 255 : 0;
+
+                //                 //blood
+                //                 } else if (distance < totalCarveSize) {
+                //                     red = Math.max(red, Math.floor(256 * (1 - (distance - carveSize) / hurtSize) * Math.random()));
+                //                 }
+                //             }
+                //         }
+
+                //         image.data[j + 0] = red;
+                //         image.data[j + 1] = green;
+                //         image.data[j + 2] = blue;
+                //         image.data[j + 3] = alpha;
+                //     }
+                // }
+                for (let i = 0; i < image.width * image.height; i++) {
+                    let j = i * 4,
+                        red =   image.data[j + 0],
+                        green = image.data[j + 1],
+                        blue =  image.data[j + 2],
+                        alpha = image.data[j + 3],
+                        x = i % image.width,
+                        y = Math.floor(i / image.width);
+                
+                    //if this pixel is relevant
+                    //if it isnt gone, if its not an eye, if its not a bone
+                    if (alpha && green !== 15 && green !== 255) {
+                        let distance = Math.sqrt(getDistance(x, y, mouseX, mouseY));
+                
+                        //eyes
+                        if (getDistance(x, y, 300, 400) < 100 ** 2
+                         || getDistance(x, y, 700, 400) < 100 ** 2) {
+                            if (distance < totalCarveSize) red = green = blue = 15;
+                
+                        //skin
+                        } else {
+                
+                            //flesh removal into bones or space
+                            if (distance < carveSize) {
+                                red = 255;
+                                green = 255;
+                                blue = 255;
+                                alpha = (
+                                    //spine
+                                    (halfHeadWidth - x) ** 2 / 3 + (head.height * 0.96 - y) ** 2     < 50 ** 2 ||
+                                    (halfHeadWidth - x) ** 2 / 6 + (head.height * 0.96 - y) ** 2 * 9 < 50 ** 2 ||
+                                    (halfHeadWidth - x) ** 2 / 3 + (head.height        - y) ** 2     < 50 ** 2 ||
+                                    (halfHeadWidth - x) ** 2 / 6 + (head.height        - y) ** 2 * 9 < 50 ** 2 ||
+                
+                                    //skull
+                                    (halfHeadWidth - x) ** 2     + (head.height * 0.5  - y) ** 2 < 450 ** 2
+                                ) ? 255 : 0;
+                
+                            //blood
+                            } else if (distance < totalCarveSize) {
+                                red = Math.max(red, Math.floor(256 * (1 - (distance - carveSize) / hurtSize) * Math.random()));
+                            }
+                        }
+                    }
+                
+                    image.data[j + 0] = red;
+                    image.data[j + 1] = green;
+                    image.data[j + 2] = blue;
+                    image.data[j + 3] = alpha;
+                }
+                console.log(performance.now() - start);
+                headCtx.putImageData(image, 0, 0);
+                render();
+            };
+            let mouseDown = false;
+            canvas.onmouseup = () => canvas.onmousemove = ()=>{};
+            canvas.onmousedown = () => canvas.onmousemove = makeCut;
+            document.onkeydown = E => {
+                if (E.keyCode === 32) selected = !selected;
+                render();
+            }
+            canvas.onwheel = E => {
+                if (selected) {
+                    hurtSize = Math.max(0, hurtSize - Math.sign(E.deltaY));
+                } else {
+                    carveSize = Math.max(0, carveSize - Math.sign(E.deltaY));
+                }
+                render();
+            };
+
+            (window.onresize = () => {
+
+                //scale and position the canvas correctly
+                let w = window.innerWidth,
+                    h = window.innerHeight
+                if (w * scaleH < h * scaleW) {
+                    canvas.width = w;
+                    canvas.height = w * scaleH / scaleW;
+                    canvas.style.top = outeroffsetY = (h - canvas.height) / 2;
+                    canvas.style.left = outeroffsetX = 0;
+                } else {
+                    canvas.height = h;
+                    canvas.width = h * scaleW / scaleH;
+                    canvas.style.top = outeroffsetY = 0;
+                    canvas.style.left = outeroffsetX = (w - canvas.width) / 2;
+                }
+
+                //to fix a bug where the canvas clears itself on resize
+                render();
+            })();
+
+            render();
+        </script>
+    </body>
+</html>
