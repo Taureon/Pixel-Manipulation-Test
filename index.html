@@ -20,7 +20,9 @@
                 fontScale = 30,
                 selected = 0,
                 hurtSize = 50,
-                carveSize = 50;
+                carveSize = 50,
+                carveBones = false,
+                carveEyes = false;
 
             head.width = 1000;
             head.height = 1000;
@@ -58,8 +60,10 @@
 
                 ctx.font = 'bold ' + fontScale + 'px consolas';
                 ctx.fillStyle = 'red';
-                ctx.fillText((selected ? ' ' : '>') + 'inner carve radius: ' + carveSize, 10, fontScale);
-                ctx.fillText((selected ? '>' : ' ') + 'outer carve radius: ' + hurtSize, 10, fontScale * 2);
+                ctx.fillText((selected === 0 ? '>' : ' ') + 'inner carve radius: ' + carveSize, 10, fontScale);
+                ctx.fillText((selected === 1 ? '>' : ' ') + 'outer carve radius: ' + hurtSize, 10, fontScale * 2);
+                ctx.fillText((selected === 2 ? '>' : ' ') + 'carve bones: ' + carveBones, 10, fontScale * 3);
+                ctx.fillText((selected === 3 ? '>' : ' ') + 'carve eyes: ' + carveEyes, 10, fontScale * 4);
             };
 
             let getDistance = (x1, y1, x2, y2) => (x1 - x2) ** 2 + (y1 - y2) ** 2,
@@ -141,12 +145,13 @@
                 
                     //if this pixel is relevant
                     //if it isnt gone, if its not an eye, if its not a bone
-                    if (alpha && green !== 15 && green !== 255) {
+                    if (alpha && (carveEyes || green !== 15) && (carveBones || green !== 255)) {
                         let distance = Math.sqrt(getDistance(x, y, mouseX, mouseY));
                 
                         //eyes
-                        if (getDistance(x, y, 300, 400) < 100 ** 2
-                         || getDistance(x, y, 700, 400) < 100 ** 2) {
+                        if (!(carveEyes || green === 255)
+                         && (getDistance(x, y, 300, 400) < 100 ** 2
+                         || getDistance(x, y, 700, 400) < 100 ** 2)) {
                             if (distance < totalCarveSize) red = green = blue = 15;
                 
                         //skin
@@ -157,7 +162,7 @@
                                 red = 255;
                                 green = 255;
                                 blue = 255;
-                                alpha = (
+                                alpha = !carveBones && red && (
                                     //spine
                                     (halfHeadWidth - x) ** 2 / 3 + (head.height * 0.96 - y) ** 2     < 50 ** 2 ||
                                     (halfHeadWidth - x) ** 2 / 6 + (head.height * 0.96 - y) ** 2 * 9 < 50 ** 2 ||
@@ -188,14 +193,23 @@
             canvas.onmouseup = () => canvas.onmousemove = ()=>{};
             canvas.onmousedown = () => canvas.onmousemove = makeCut;
             document.onkeydown = E => {
-                if (E.keyCode === 32) selected = !selected;
+                if (E.keyCode === 32) selected = (selected + 1) % 4;
                 render();
             }
             canvas.onwheel = E => {
-                if (selected) {
-                    hurtSize = Math.max(0, hurtSize - Math.sign(E.deltaY));
-                } else {
-                    carveSize = Math.max(0, carveSize - Math.sign(E.deltaY));
+                switch (selected) {
+                    case 0:
+                        carveSize = Math.max(0, carveSize - Math.sign(E.deltaY));
+                        break;
+                    case 1:
+                        hurtSize = Math.max(0, hurtSize - Math.sign(E.deltaY));
+                        break;
+                    case 2:
+                        carveBones = !carveBones;
+                        break;
+                    case 3:
+                        carveEyes = !carveEyes;
+
                 }
                 render();
             };
